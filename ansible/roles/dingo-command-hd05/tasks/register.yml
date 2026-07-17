@@ -1,0 +1,8 @@
+---
+- import_role:
+    name: service-ks-register
+  vars:
+    service_ks_register_auth: "{{ openstack_dingo_command_hd05_auth }}"
+    service_ks_register_services: "{{ dingo_command_hd05_ks_services }}"
+    service_ks_register_users: "{{ dingo_command_hd05_ks_users }}"
+

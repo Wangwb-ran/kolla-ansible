@@ -1,0 +1,71 @@
+---
+
+- name: 创建Ceph仓库配置文件
+  copy:
+    dest: /etc/yum.repos.d/ceph.repo
+    content: |
+      [Ceph]
+      name=Ceph packages for $basearch
+      baseurl=http://download.ceph.com/rpm-squid/el9/$basearch
+      enabled=1
+      gpgcheck=1
+      type=rpm-md
+      gpgkey=https://download.ceph.com/keys/release.asc
+
+      [Ceph-noarch]
+      name=Ceph noarch packages
+      baseurl=http://download.ceph.com/rpm-squid/el9/noarch
+      enabled=1
+      gpgcheck=1
+      type=rpm-md
+      gpgkey=https://download.ceph.com/keys/release.asc
+
+      [ceph-source]
+      name=Ceph source packages
+      baseurl=http://download.ceph.com/rpm-squid/el9/SRPMS
+      enabled=1
+      gpgcheck=1
+      type=rpm-md
+      gpgkey=https://download.ceph.com/keys/release.asc
+  with_dict: "{{ dingo_command_hd05_services | select_services_enabled_and_mapped_to_host }}"
+
+- name: 安装Ceph客户端工具
+  package:
+    name: ceph-common
+    state: present
+  with_dict: "{{ dingo_command_hd05_services | select_services_enabled_and_mapped_to_host }}"
+
+- name: 确保Ceph配置目录存在
+  file:
+    path: /etc/ceph
+    state: directory
+    mode: '0755'
+  with_dict: "{{ dingo_command_hd05_services | select_services_enabled_and_mapped_to_host }}"
+
+- name: 写入ceph.client.{{ dingo_command_hd05_ceph_client_name }}.keyring内容
+  copy:
+    dest: /etc/ceph/ceph.client.{{ dingo_command_hd05_ceph_client_name }}.keyring
+    content: "{{ ceph_keyring_content }}"
+    mode: '0600'
+  with_dict: "{{ dingo_command_hd05_services | select_services_enabled_and_mapped_to_host }}"
+
+# - name: 复制ceph.client.keyring.j2为ceph.client.{{ dingo_command_hd05_ceph_client_name }}.keyring
+#   template:
+#     src: ceph.client.keyring.j2
+#     dest: /etc/ceph/ceph.client.{{ dingo_command_hd05_ceph_client_name }}.keyring
+#     mode: '0600'
+#   with_dict: "{{ dingo_command_hd05_services | select_services_enabled_and_mapped_to_host }}"
+
+- name: 确保挂载点目录存在
+  file:
+    path: "{{ dingo_command_hd05_ceph_mount_path }}"
+    state: directory
+    mode: '0755'
+  with_dict: "{{ dingo_command_hd05_services | select_services_enabled_and_mapped_to_host }}"
+
+- name: 挂载Ceph文件系统
+  shell: |
+    mount.ceph "{{ dingo_command_hd05_ceph_mon_addresses }}:/{{ dingo_command_hd05_ceph_fs_name }}" "{{ dingo_command_hd05_ceph_mount_path }}" \
+      -o name={{ dingo_command_hd05_ceph_client_name }},secretfile=/etc/ceph/ceph.client.{{ dingo_command_hd05_ceph_client_name }}.keyring,acl,noatime,_netdev,mds_namespace={{ dingo_command_hd05_ceph_mds_namespace }}
+  with_dict: "{{ dingo_command_hd05_services | select_services_enabled_and_mapped_to_host }}"
+  when: kolla_action != "upgrade"

@@ -1,0 +1,21 @@
+---
+- name: Running dingo-command bootstrap container
+  vars:
+    dingo_command: "{{ dingo_command_hd05_services['dingo-command-hd05'] }}"
+  become: true
+  kolla_container:
+    action: "start_container"
+    common_options: "{{ docker_common_options }}"
+    detach: False
+    environment:
+      KOLLA_BOOTSTRAP:
+      KOLLA_CONFIG_STRATEGY: "{{ config_strategy }}"
+    image: "{{ dingo_command.image }}"
+    labels:
+      BOOTSTRAP:
+    name: "dingo-command-hd05"
+    restart_policy: oneshot
+    privileged: True
+    volumes: "{{ dingo_command.volumes | reject('equalto', '') | list }}"
+  run_once: True
+  delegate_to: "{{ groups[dingo_command.group][0] }}"

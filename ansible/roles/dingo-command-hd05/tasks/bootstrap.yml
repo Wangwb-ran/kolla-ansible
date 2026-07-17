@@ -1,0 +1,64 @@
+---
+- name: Creating dingo-command database
+  become: true
+  kolla_toolbox:
+    container_engine: "{{ kolla_container_engine }}"
+    module_name: mysql_db
+    module_args:
+      login_host: "{{ database_address }}"
+      login_port: "{{ database_port }}"
+      login_user: "{{ dingo_command_hd05_database_shard_root_user }}"
+      login_password: "{{ database_password }}"
+      name: "{{ dingo_command_hd05_database_name }}"
+  run_once: True
+  delegate_to: "{{ groups['dingo-command-hd05'][0] }}"
+  when:
+    - not use_preconfigured_databases | bool
+
+- name: Creating dingo-command database user and setting permissions
+  become: true
+  kolla_toolbox:
+    container_engine: "{{ kolla_container_engine }}"
+    module_name: mysql_user
+    module_args:
+      login_host: "{{ database_address }}"
+      login_port: "{{ database_port }}"
+      login_user: "{{ dingo_command_hd05_database_shard_root_user }}"
+      login_password: "{{ database_password }}"
+      name: "{{ dingo_command_hd05_database_user }}"
+      password: "{{ dingo_command_hd05_database_password }}"
+      host: "%"
+      priv: "{{ dingo_command_hd05_database_name }}.*:ALL"
+      append_privs: "yes"
+  run_once: True
+  delegate_to: "{{ groups['dingo-command-hd05'][0] }}"
+  when:
+    - not use_preconfigured_databases | bool
+
+- name: Creating dedicated RabbitMQ vhost for dingo-command-hd05
+  become: true
+  command: >
+    {{ kolla_container_engine }} exec rabbitmq
+    rabbitmqctl add_vhost {{ dingo_command_hd05_vhost }}
+  register: _dc_hd05_vhost
+  changed_when: "'already exists' not in (_dc_hd05_vhost.stderr | default(''))"
+  failed_when:
+    - _dc_hd05_vhost.rc != 0
+    - "'already exists' not in (_dc_hd05_vhost.stderr | default(''))"
+  run_once: True
+  delegate_to: "{{ groups['rabbitmq'][0] }}"
+  when:
+    - dingo_command_hd05_manage_vhost | bool
+
+- name: Setting permissions on dingo-command-hd05 RabbitMQ vhost
+  become: true
+  command: >
+    {{ kolla_container_engine }} exec rabbitmq
+    rabbitmqctl set_permissions -p {{ dingo_command_hd05_vhost }}
+    {{ dingo_command_hd05_mq_user }} ".*" ".*" ".*"
+  run_once: True
+  delegate_to: "{{ groups['rabbitmq'][0] }}"
+  when:
+    - dingo_command_hd05_manage_vhost | bool
+
+- import_tasks: bootstrap_service.yml

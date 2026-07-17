@@ -377,6 +377,30 @@
         - enable_haproxy | bool
         - kolla_action in ['deploy', 'reconfigure', 'config']
 
+- name: Apply dingo-command-hd05 loadbalancer
+  gather_facts: false
+  hosts:
+    - loadbalancer
+    - '&enable_loadbalancer_True'
+  serial: '{{ kolla_serial|default("0") }}'
+  tags:
+    - haproxy
+    - keepalived
+    - loadbalancer
+    - dingo-command-hd05
+  roles:
+    - { role: loadbalancer }
+  tasks:
+    - block:
+        - include_role:
+            name: dingo-command-hd05
+            tasks_from: loadbalancer
+          tags: dingo-command-hd05
+          when: enable_dingo_command_hd05 | bool
+      when:
+        - enable_haproxy | bool
+        - kolla_action in ['deploy', 'reconfigure', 'config', 'upgrade']
+
 - name: Apply role letsencrypt
   gather_facts: false
   hosts:
@@ -1062,3 +1086,13 @@
   roles:
     - { role: dingo-command,
         tags: dingo-bear }
+
+- name: Apply role dingo-command-hd05
+  gather_facts: false
+  hosts:
+    - dingo-command-hd05
+  serial: '{{ kolla_serial|default("0") }}'
+  roles:
+    - role: dingo-command-hd05
+      tags: dingo-command-hd05
+      when: enable_dingo_command_hd05 | bool
