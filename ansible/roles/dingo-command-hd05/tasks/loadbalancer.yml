@@ -1,0 +1,7 @@
+---
+- name: "Configure loadbalancer for {{ project_name }}"
+  import_role:
+    name: loadbalancer-config
+  vars:
+    project_services: "{{ dingo_command_hd05_services }}"
+  tags: always
